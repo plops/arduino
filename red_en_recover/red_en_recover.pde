@@ -1,7 +1,7 @@
 volatile unsigned int Ticks; // holds the pulse count as .5 us ticks
 char icpPin=8; // this interrupt handler must use pin 8
-char outpin=13; 
-volatile char newtick=0;
+volatile char bit_plane_change=0; // incremented whenever a different bitplane is displayed
+char mma=13,light=12,vsync=11;
  
 ISR(TIMER1_CAPT_vect){
   if( !bit_is_set(TCCR1B ,ICES1)) // was rising edge detected ?
@@ -9,21 +9,25 @@ ISR(TIMER1_CAPT_vect){
   else {			  // falling edge was detected
     Ticks = ICR1;
     if(Ticks>1000){
-      newtick=0;
-      digitalWrite(outpin,HIGH);  
+      bit_plane_change=0;
     }
   }
   TCCR1B ^= _BV(ICES1);		  // toggle bit value to trigger on the other edge
-  newtick++;
-  if(newtick>=48)
-    digitalWrite(outpin,LOW);
+  if(bit_plane_change==0)
+    digitalWrite(vsync,HIGH);
+  else if (bit_plane_change==24)
+    digitalWrite(vsync,LOW);
+  #include "/home/martin/0913/arduino/red_en_recover/ifs"
+  bit_plane_change++;
 }
  
 void setup()			  // run once, when the sketch starts
 {
   //Serial.begin(115200);
   pinMode(icpPin,INPUT);
-  pinMode(outpin,OUTPUT);
+  pinMode(mma,OUTPUT);
+  pinMode(light,OUTPUT);
+  pinMode(vsync,OUTPUT);
   TCCR1A = 0x00; // COM1A1=0, COM1A0=0 => Disconnect Pin OC1 from Timer/Counter 1 -- PWM11=0,PWM10=0 => PWM Operation disabled
   TCCR1B = 0x02; // 16MHz clock with prescaler means TCNT1 increments every .5 uS (cs11 bit set
   Ticks = 0;	 // default value indicating no pulse detected
@@ -38,26 +42,15 @@ int getTick() {
   return akaTick;
 }
  
-char getnewtick()
+char get_plane_change()
 {
-  int akatick;
+  int aka;
   cli();
-  akatick=newtick;
+  aka=bit_plane_change;
   sei();
-  return akatick;
+  return aka;
 }
  
-void loop()			   // run over and over again
+void loop() // run over and over again
 { 
- /* static char oldtick = 0;
-  char n=getnewtick();
-  if(n!=oldtick) {
-    oldtick = n;
-    int w=getTick();
- 
-    Serial.print( w);
-    Serial.print(' ');
-    Serial.print( (int)n);
-    Serial.print('\n');
-  }*/
 }
